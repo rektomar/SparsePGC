@@ -159,16 +159,35 @@ class DictDataset(torch.utils.data.Dataset):
 
     def __len__(self):
         return len(self.data)
+    
+    
+def pad(x, max_size):
+    pad_size = max_size - x.shape[0]
+    return torch.nn.functional.pad(x, (0, 0, 0, pad_size), value=-1)
+
+def collate_dict(batch, data_info):
+    out = {}
+    out['s'] = [d['s'] for d in batch]
+
+    out['v'] = torch.stack([pad(d['v'], data_info.max_atoms) for d in batch], 0)
+    out['e'] = torch.stack([pad(d['e'], data_info.max_bonds) for d in batch], 0)
+
+    out['n'] = torch.tensor([d['n'] for d in batch])
+    out['m'] = torch.tensor([d['m'] for d in batch])
+    return out
 
 def load_dataset(name, batch_size, split, seed=0, dir='data/', order='canonical'):
     x = DictDataset(torch.load(f'{dir}{name}_{order}.pt', weights_only=True))
 
+    def collate_wrapper(batch):
+        return collate_dict(batch, MOLECULAR_DATASETS[name])
+
     torch.manual_seed(seed)
     x_trn, x_val, x_tst = torch.utils.data.random_split(x, split)
 
-    loader_trn = torch.utils.data.DataLoader(x_trn, batch_size=batch_size, num_workers=2, shuffle=False, pin_memory=True)
-    loader_val = torch.utils.data.DataLoader(x_val, batch_size=batch_size, num_workers=2, shuffle=False, pin_memory=True)
-    loader_tst = torch.utils.data.DataLoader(x_tst, batch_size=batch_size, num_workers=2, shuffle=False, pin_memory=True)
+    loader_trn = torch.utils.data.DataLoader(x_trn, batch_size=batch_size, num_workers=2, shuffle=False, collate_fn=collate_wrapper, pin_memory=True)
+    loader_val = torch.utils.data.DataLoader(x_val, batch_size=batch_size, num_workers=2, shuffle=False, collate_fn=collate_wrapper, pin_memory=True)
+    loader_tst = torch.utils.data.DataLoader(x_tst, batch_size=batch_size, num_workers=2, shuffle=False, collate_fn=collate_wrapper, pin_memory=True)
 
     smiles_trn = [x['s'] for x in loader_trn.dataset]
     smiles_val = [x['s'] for x in loader_val.dataset]
@@ -188,7 +207,7 @@ if __name__ == '__main__':
     RDLogger.DisableLog('rdApp.*')
     torch.set_printoptions(threshold=10_000, linewidth=200)
 
-    download = True
+    download = False
     dataset = 'zinc250k'
     orders = ['bft']
 
