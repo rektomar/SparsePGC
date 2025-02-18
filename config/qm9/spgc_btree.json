@@ -1,21 +1,24 @@
 {
     "dataset": "qm9",
-    "model": "marg_sort",
+    "model": "sparse_pgc",
     "order": "canonical",
     "model_hpars": {
-        "nc": 100,
-        "backend": "rtree",
-        "bx_hpars": {
+        "nc": 256,
+        "backend": "btree",
+        "bvt_hpars": {
             "nl": 3,
-            "nr": 20,
-            "ns": 20,
-            "ni": 20
+            "ns": 32,
+            "ni": 32
         },
-        "ba_hpars": {
+        "be_hpars": {
             "nl": 5,
-            "nr": 20,
-            "ns": 20,
-            "ni": 20
+            "ns": 32,
+            "ni": 32
+        },
+        "bet_hpars": {
+            "nl": 3,
+            "ns": 32,
+            "ni": 32
         },
         "device": "cuda"
     },
@@ -27,7 +30,7 @@
             0.82
         ]
     },
-    "num_epochs": 40,
+    "num_epochs": 5,
     "batch_size": 256,
     "seed": 0
 }
