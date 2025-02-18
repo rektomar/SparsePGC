@@ -9,7 +9,7 @@ from rdkit import Chem
 from tqdm import tqdm
 from rdkit import RDLogger
 
-from utils.molecular import mol2sparseg
+from utils.molecular import mol2sparseg, pad
 
 # from scipy.sparse import csr_matrix
 # from scipy.sparse.csgraph import breadth_first_order, depth_first_order, reverse_cuthill_mckee
@@ -143,8 +143,7 @@ def preprocess(path, smile_col, data_info, order='canonical'):
         mol = Chem.MolFromSmiles(sml)
         n = mol.GetNumAtoms()
         m = mol.GetNumBonds()
-
-        atom_tensor, bond_tensor = mol2sparseg(mol, data_info.atom_list)
+        atom_tensor, bond_tensor = mol2sparseg(mol, data_info)
 
         data_list.append({'s': sml, 'v': atom_tensor, 'e': bond_tensor, 'n': n, 'm': m})
 
@@ -160,11 +159,6 @@ class DictDataset(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.data)
     
-    
-def pad(x, max_size):
-    pad_size = max_size - x.shape[0]
-    return torch.nn.functional.pad(x, (0, 0, 0, pad_size), value=-1)
-
 def collate_dict(batch, data_info):
     out = {}
     out['s'] = [d['s'] for d in batch]
@@ -207,8 +201,8 @@ if __name__ == '__main__':
     RDLogger.DisableLog('rdApp.*')
     torch.set_printoptions(threshold=10_000, linewidth=200)
 
-    download = False
-    dataset = 'zinc250k'
+    download = True
+    dataset = 'qm9'
     orders = ['bft']
 
     for order in orders:

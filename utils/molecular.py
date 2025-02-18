@@ -11,11 +11,19 @@ BOND_ENCODER = {Chem.BondType.SINGLE: 1, Chem.BondType.DOUBLE: 2, Chem.BondType.
 BOND_DECODER = {1: Chem.BondType.SINGLE, 2: Chem.BondType.DOUBLE, 3: Chem.BondType.TRIPLE, 4: Chem.BondType.AROMATIC}
 
 
-def mol2sparseg(mol, atom_list):
+def pad(x, max_size):
+    pad_size = max_size - x.shape[0]
+    return torch.nn.functional.pad(x, (0, 0, 0, pad_size), value=-1)
+
+def unpad(x):
+    mask = ~(x == -1).all(dim=1)
+    return x[mask]
+
+def mol2sparseg(mol, data_info):
     atom_tensor = torch.zeros(mol.GetNumAtoms(), 2, dtype=torch.int8)
     for i, atom in enumerate(mol.GetAtoms()):
         atom_tensor[i, 0] = atom.GetIdx()
-        atom_tensor[i, 1] = atom_list.index(atom.GetAtomicNum())
+        atom_tensor[i, 1] = data_info.atom_list.index(atom.GetAtomicNum())
 
     bond_tensor = torch.zeros(mol.GetNumBonds(), 3, dtype=torch.int8)
     for i, bond in enumerate(mol.GetBonds()):
@@ -25,11 +33,20 @@ def mol2sparseg(mol, atom_list):
 
     return atom_tensor, bond_tensor
 
-def sparseg2mol(atom_tensor, bond_tensor, atom_list):
+def mols2sparsegs(mols, data_info):
+    v, e = [], []
+    for mol in mols:
+        v_i, e_i = mol2sparseg(mol, data_info)
+        v_i, e_i = pad(v_i, data_info.max_atoms), pad(e_i, data_info.max_bonds)
+        v.append(v_i)
+        e.append(e_i)
+    return torch.stack(v, 0), torch.stack(e, 0)
+
+def sparseg2mol(atom_tensor, bond_tensor, data_info):
     mol = Chem.RWMol()
 
     for _, atom in atom_tensor:
-        mol.AddAtom(Chem.Atom(atom_list[int(atom)]))
+        mol.AddAtom(Chem.Atom(data_info.atom_list[int(atom)]))
 
     for start, end, bond_type in bond_tensor:
         mol.AddBond(int(start), int(end), BOND_DECODER[int(bond_type)])
@@ -45,11 +62,16 @@ def sparseg2mol(atom_tensor, bond_tensor, atom_list):
                 mol.GetAtomWithIdx(i).SetFormalCharge(1)
     return mol
 
-def sparsegs2mols(atom_tensor, bond_tensor, atom_list):
-    return [sparseg2mol(v, e, atom_list) for v, e in zip(atom_tensor, bond_tensor)]
+def sparsegs2mols(atom_tensor, bond_tensor, data_info):
+    mols = []
+    for v, e in zip(atom_tensor, bond_tensor):
+        v, e = unpad(v), unpad(e)
+        mol = sparseg2mol(v, e, data_info)
+        mols.append(mol)
+    return mols
 
 def mols2smls(mols, canonical=True):
-    return [Chem.MolToSmiles(mol, canonical=canonical) for mol in mols]
+    return [Chem.MolToSmiles(mol, canonical=canonical, kekuleSmiles=True) for mol in mols]
 
 def valency(mol):
     try:
@@ -112,8 +134,8 @@ def isvalid(mol, canonical=True):
 
 if __name__ == '__main__':
     # 10 samples from the QM9 dataset
-    max_atom = 9
-    atom_list = [0, 6, 7, 8, 9]
+    from utils.datasets import MOLECULAR_DATASETS
+    data_info = MOLECULAR_DATASETS['qm9']
     smiles = [
             'CCC1(C)CN1C(C)=O',
             'O=CC1=COC(=O)N=C1',
@@ -127,11 +149,19 @@ if __name__ == '__main__':
             'CN1C(=O)C2C(O)C21C'
         ]
 
+    molsa = []
     for sa in smiles:
         mol = Chem.MolFromSmiles(sa)
         Chem.Kekulize(mol)
-        v, e = mol2sparseg(mol, atom_list)
-        #print(v, e)
-        mol = sparseg2mol(v, e, atom_list)
+        molsa.append(mol)
+        v, e = mol2sparseg(mol, data_info)
+        mol = sparseg2mol(v, e, data_info)
         sb = Chem.MolToSmiles(mol, kekuleSmiles=True)
         print(f'{sa}  {sb}')
+
+    print(40*'-')
+    v, e = mols2sparsegs(molsa, data_info)
+    molsb = sparsegs2mols(v, e, data_info)
+    smilesb = mols2smls(molsb)
+    print(smiles)
+    print(smilesb)
