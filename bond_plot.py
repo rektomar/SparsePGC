@@ -1,5 +1,6 @@
 import torch
 
+from math import isclose
 from utils.datasets import load_dataset
 from pylatex import Document, TikZ, Axis, NoEscape
 
@@ -23,6 +24,17 @@ def fill_coords(matrix):
     s = ' '.join(s)
     return s
 
+def mark_zeros(matrix):
+    s = []
+    for i in range(matrix.shape[0]):
+        for j in range(matrix.shape[1]):
+            if isclose(matrix[i, j], 0.0, abs_tol=1e-8):
+                s.append(f'\\node[text=black] at ({i},{j}) {{$*$}};')
+        s.append('\n')
+    s = ''.join(s)
+
+    return s
+
 
 def create_document(dataset, matrix):
     max_atoms, max_bonds = matrix.shape
@@ -42,14 +54,15 @@ def create_document(dataset, matrix):
         with tikz.create(Axis(options=axis_options)) as ax:
             s = fill_coords(matrix)
             ax.append(NoEscape(f'\\addplot[matrix plot*, point meta=explicit] coordinates {{\n {s} \n}};'))
+            ax.append(NoEscape(mark_zeros(matrix)))
 
-    doc.generate_pdf('plots/bond_plot', clean_tex=False)
+    doc.generate_pdf(f'plots/{dataset}_bond_plot', clean_tex=False)
 
 
 if __name__ == "__main__":
     dataset = 'zinc250k'
 
-    loader = load_dataset(dataset, 100, [0.98, 0.01, 0.01], order='bft')
+    loader = load_dataset(dataset, 100, [0.98, 0.01, 0.01], order='canonical')
     m = torch.tensor([b['m'] for b in loader['loader_trn'].dataset], dtype=torch.int8)
     n = torch.tensor([b['n'] for b in loader['loader_trn'].dataset], dtype=torch.int8)
 
