@@ -1,6 +1,6 @@
 import os
 
-from utils.datasets import MOLECULAR_DATASETS
+from utils.datasets import MOLECULAR_DATASETS, BOND_DECODER
 from models.einsum import Graph, EinsumNetwork, ExponentialFamilyArray
 
 class BTreeSPN(EinsumNetwork.EinsumNetwork):
@@ -56,7 +56,7 @@ def backend_selector(dataset, hpars):
 
     nd_vt, nk_vt = data_info.max_atoms, len(data_info.atom_list)
     nd_e, nk_e   = 2*data_info.max_bonds, data_info.max_atoms 
-    nd_et, nk_et = data_info.max_bonds, 4
+    nd_et, nk_et = data_info.max_bonds, len(BOND_DECODER)
 
     nc = hpars['nc']
 

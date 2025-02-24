@@ -21,7 +21,7 @@ class SparsePGC(nn.Module):
         self.max_bonds = max_bonds
 
         self.logits_n = nn.Parameter(torch.randn(max_atoms, device=self.device), requires_grad=True)
-        self.logits_m = nn.Parameter(torch.randn(max_bonds, device=self.device), requires_grad=True)
+        self.logits_m = nn.Parameter(torch.randn(max_bonds+1, device=self.device), requires_grad=True)
         self.logits_w = nn.Parameter(torch.randn(self.nc,   device=self.device), requires_grad=True)
 
         self.to(hpars['device'])
