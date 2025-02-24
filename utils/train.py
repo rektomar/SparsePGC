@@ -70,7 +70,7 @@ def train(
     optimizer = optim.Adam(model.parameters(), **hyperpars['optimizer_hpars'])
     # scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.1)
 
-    data_info = MOLECULAR_DATASETS['qm9']
+    data_info = MOLECULAR_DATASETS[hyperpars['dataset']]
 
     lookahead_counter = num_nonimproving_epochs
     if metric_type in METRIC_TYPES:

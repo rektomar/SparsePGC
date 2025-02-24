@@ -42,14 +42,33 @@ def mols2sparsegs(mols, data_info):
         e.append(e_i)
     return torch.stack(v, 0), torch.stack(e, 0)
 
+def valid_bond(start, end, existing_bonds, n_atoms):
+    # bond exists
+    if (start, end) in existing_bonds or (end, start) in existing_bonds:
+        return False
+    # self-loop
+    if start == end:
+        return False
+    # no vertex to connect to
+    if start > n_atoms-1 or end > n_atoms-1:
+        return False
+    return True
+
 def sparseg2mol(atom_tensor, bond_tensor, data_info):
     mol = Chem.RWMol()
 
     for _, atom in atom_tensor:
         mol.AddAtom(Chem.Atom(data_info.atom_list[int(atom)]))
-
+    
+    existing_bonds = set()
+    n_atoms = mol.GetNumAtoms()
     for start, end, bond_type in bond_tensor:
-        mol.AddBond(int(start), int(end), BOND_DECODER[int(bond_type)])
+        start, end, bond_type = int(start), int(end), int(bond_type)
+        if not valid_bond(start, end, existing_bonds, n_atoms):
+            continue
+        existing_bonds.add((start, end))
+
+        mol.AddBond(start, end, BOND_DECODER[bond_type])
         flag, valence = valency(mol)
         if flag:
             continue
