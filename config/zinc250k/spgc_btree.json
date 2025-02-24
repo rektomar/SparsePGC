@@ -1,0 +1,36 @@
+{
+    "dataset": "zinc250k",
+    "model": "sparse_pgc",
+    "order": "canonical",
+    "model_hpars": {
+        "nc": 256,
+        "backend": "btree",
+        "bvt_hpars": {
+            "nl": 3,
+            "ns": 32,
+            "ni": 32
+        },
+        "be_hpars": {
+            "nl": 5,
+            "ns": 32,
+            "ni": 32
+        },
+        "bet_hpars": {
+            "nl": 3,
+            "ns": 32,
+            "ni": 32
+        },
+        "device": "cpu"
+    },
+    "optimizer": "adam",
+    "optimizer_hpars": {
+        "lr": 0.05,
+        "betas": [
+            0.9,
+            0.82
+        ]
+    },
+    "num_epochs": 5,
+    "batch_size": 256,
+    "seed": 0
+}
