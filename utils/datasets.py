@@ -36,8 +36,8 @@ MOLECULAR_DATASETS = {
 }
 
 
-BOND_ENCODER = {Chem.BondType.SINGLE: 1, Chem.BondType.DOUBLE: 2, Chem.BondType.TRIPLE: 3, Chem.BondType.AROMATIC: 4}
-BOND_DECODER = {1: Chem.BondType.SINGLE, 2: Chem.BondType.DOUBLE, 3: Chem.BondType.TRIPLE, 4: Chem.BondType.AROMATIC}
+BOND_ENCODER = {Chem.BondType.SINGLE: 0, Chem.BondType.DOUBLE: 1, Chem.BondType.TRIPLE: 2, Chem.BondType.AROMATIC: 3}
+BOND_DECODER = {0: Chem.BondType.SINGLE, 1: Chem.BondType.DOUBLE, 2: Chem.BondType.TRIPLE, 3: Chem.BondType.AROMATIC}
 
 
 # Moses Atoms - C:6, N:7, S:16, O:8, F:9, Cl:17, Br:35, H:1
@@ -144,6 +144,10 @@ def preprocess(path, smile_col, data_info, order='canonical'):
         Chem.Kekulize(mol)
         n = mol.GetNumAtoms()
         m = mol.GetNumBonds()
+
+        if m < 1:
+            print(f'Skipping {sml}')
+            continue
         atom_tensor, bond_tensor = mol2sparseg(mol, data_info)
 
         data_list.append({'s': sml, 'v': atom_tensor, 'e': bond_tensor, 'n': n, 'm': m})
@@ -203,7 +207,7 @@ if __name__ == '__main__':
     torch.set_printoptions(threshold=10_000, linewidth=200)
 
     download = True
-    dataset = 'qm9'
+    dataset = 'zinc250k'
     orders = ['canonical']
 
     for order in orders:
