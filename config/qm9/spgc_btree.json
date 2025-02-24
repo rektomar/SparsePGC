@@ -20,7 +20,7 @@
             "ns": 32,
             "ni": 32
         },
-        "device": "cpu"
+        "device": "cuda"
     },
     "optimizer": "adam",
     "optimizer_hpars": {
@@ -30,7 +30,7 @@
             0.82
         ]
     },
-    "num_epochs": 5,
+    "num_epochs": 10,
     "batch_size": 256,
     "seed": 0
 }

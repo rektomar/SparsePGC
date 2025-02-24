@@ -121,8 +121,8 @@ def correct(mol):
 
     return mol
 
-def correct_mols(atom_tensor, bond_tensor, atom_list):
-    return [correct(mol) for mol in sparsegs2mols(atom_tensor, bond_tensor, atom_list)]
+def correct_mols(atom_tensor, bond_tensor, data_info):
+    return [correct(mol) for mol in sparsegs2mols(atom_tensor, bond_tensor, data_info)]
 
 def get_valid(sml):
     mol = Chem.MolFromSmiles(sml)

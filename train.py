@@ -19,7 +19,7 @@ if __name__ == '__main__':
     # torch.set_printoptions(threshold=10_000, linewidth=200)
     RDLogger.DisableLog('rdApp.*')
 
-    dataset = 'qm9'
+    dataset = 'zinc250k'
 
     backends = [
         'spgc_btree'
@@ -39,6 +39,6 @@ if __name__ == '__main__':
         print(hyperpars['order'])
 
         train(model, loaders, hyperpars, BASE_DIR_TRN)
-        # metrics = evaluate(loaders, hyperpars, BASE_DIR_TRN, compute_nll=True)
+        metrics = evaluate(loaders, hyperpars, BASE_DIR_TRN, compute_nll=True)
 
-        # print("\n".join(f'{key:<16}{value:>10.4f}' for key, value in metrics.items()))
+        print("\n".join(f'{key:<16}{value:>10.4f}' for key, value in metrics.items()))

@@ -62,6 +62,7 @@ class SparsePGC(nn.Module):
     def logpdf(self, v: torch.Tensor, e: torch.Tensor):
         return self(v, e).mean()
     
+    @torch.no_grad
     def sample(self, num_samples: int):
         samp_n = torch.distributions.Categorical(logits=self.logits_n).sample((num_samples, ))
         samp_m = torch.distributions.Categorical(logits=self.logits_m).sample((num_samples, ))
@@ -83,7 +84,7 @@ class SparsePGC(nn.Module):
         e = torch.cat((edges, etype.unsqueeze(-1)), -1)
         e[~mask_e] = -1
 
-        return v, e
+        return v.to(device='cpu', dtype=torch.int), e.to(device='cpu', dtype=torch.int)
 
 MODELS = {
     'sparse_pgc': SparsePGC,

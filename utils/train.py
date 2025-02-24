@@ -140,18 +140,18 @@ def evaluate(
     model.eval()
 
     canonical = (hyperpars['order']=='canonical')
-    atom_list = hyperpars['atom_list']
+    data_info = MOLECULAR_DATASETS[hyperpars['dataset']]
 
     start = default_timer()
     x_sam, a_sam = model.sample(num_samples)
     time_sam = default_timer() - start
 
     start = default_timer()
-    x_res, a_res = resample_invalid_mols(model, num_samples, atom_list, x_sam.size(1), canonical=canonical)
+    x_res, a_res = resample_invalid_mols(model, num_samples, data_info, canonical=canonical)
     time_res = default_timer() - start
 
     start = default_timer()
-    x_cor, a_cor = mols2sparsegs(correct_mols(x_sam, a_sam, atom_list), x_sam.size(1), atom_list)
+    x_cor, a_cor = mols2sparsegs(correct_mols(x_sam, a_sam, data_info), data_info)
     time_cor = default_timer() - start
 
     with torch.no_grad():
@@ -167,9 +167,9 @@ def evaluate(
         else:
             metrics_neglogliks = {}
 
-    mols_sam, _, metrics_sam = evaluate_molecules(x_sam, a_sam, loaders, atom_list, True, True, True, preffix='sam_', canonical=canonical)
-    mols_res, _, metrics_res = evaluate_molecules(x_res, a_res, loaders, atom_list, True, True, True, preffix='res_', canonical=canonical)
-    mols_cor, _, metrics_cor = evaluate_molecules(x_cor, a_cor, loaders, atom_list, True, True, True, preffix='cor_', canonical=canonical)
+    mols_sam, _, metrics_sam = evaluate_molecules(x_sam, a_sam, loaders, data_info, True, True, True, preffix='sam_', canonical=canonical)
+    mols_res, _, metrics_res = evaluate_molecules(x_res, a_res, loaders, data_info, True, True, True, preffix='res_', canonical=canonical)
+    mols_cor, _, metrics_cor = evaluate_molecules(x_cor, a_cor, loaders, data_info, True, True, True, preffix='cor_', canonical=canonical)
 
     metrics = {**metrics_sam,
                **metrics_res,
