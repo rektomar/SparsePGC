@@ -141,6 +141,7 @@ def preprocess(path, smile_col, data_info, order='canonical'):
 
     for sml in tqdm(smls_list):
         mol = Chem.MolFromSmiles(sml)
+        Chem.Kekulize(mol)
         n = mol.GetNumAtoms()
         m = mol.GetNumBonds()
         atom_tensor, bond_tensor = mol2sparseg(mol, data_info)
@@ -203,7 +204,7 @@ if __name__ == '__main__':
 
     download = True
     dataset = 'qm9'
-    orders = ['bft']
+    orders = ['canonical']
 
     for order in orders:
         if download:

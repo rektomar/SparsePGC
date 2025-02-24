@@ -1,9 +1,9 @@
 import torch
 from rdkit import Chem
-from utils.molecular import mols2gs, gs2mols, mols2smls, get_vmols
+from utils.molecular import mols2sparsegs, sparsegs2mols, mols2smls, get_vmols
 
 from utils.metrics.nspdk import metric_nspdk
-from utils.metrics.kldiv import metric_k
+# from utils.metrics.kldiv import metric_k
 from utils.metrics.fcd import metric_f 
 
 
@@ -48,10 +48,10 @@ def metric_s(mols, num_mols):
     return mols_stable / float(num_mols), bond_stable / float(sum_atoms)
 
 def evaluate_molecules(
-        x,
-        a,
+        v,
+        e,
         loaders,
-        atom_list,
+        data_info,
         evaluate_trn=False,
         evaluate_val=False,
         evaluate_tst=False,
@@ -60,9 +60,9 @@ def evaluate_molecules(
         preffix='',
         device="cuda"
     ):
-    num_mols = len(x)
+    num_mols = len(v)
 
-    mols = gs2mols(x, a, atom_list)
+    mols = sparsegs2mols(v, e, data_info)
     smls = mols2smls(mols, canonical)
     vmols, vsmls = get_vmols(smls)
 
@@ -86,19 +86,19 @@ def evaluate_molecules(
     if evaluate_trn == True:
         metrics = metrics | {
             f'{preffix}fcd_trn'  : metric_f(vsmls, loaders['smiles_trn'], device, canonical),
-            f'{preffix}kldiv_trn': metric_k(vsmls, loaders['smiles_trn']),
+            # f'{preffix}kldiv_trn': metric_k(vsmls, loaders['smiles_trn']),
             # f'{preffix}nspdk_trn': metric_nspdk(vsmls, loaders['smiles_trn']),
         }
     if evaluate_val == True:
         metrics = metrics | {
             f'{preffix}fcd_val'  : metric_f(vsmls, loaders['smiles_val'], device, canonical),
-            f'{preffix}kldiv_val': metric_k(vsmls, loaders['smiles_val']),
+            # f'{preffix}kldiv_val': metric_k(vsmls, loaders['smiles_val']),
             f'{preffix}nspdk_val': metric_nspdk(vsmls, loaders['smiles_val']),
         }
     if evaluate_tst == True:
         metrics = metrics | {
             f'{preffix}fcd_tst'  : metric_f(vsmls, loaders['smiles_tst'], device, canonical),
-            f'{preffix}kldiv_tst': metric_k(vsmls, loaders['smiles_tst']),
+            # f'{preffix}kldiv_tst': metric_k(vsmls, loaders['smiles_tst']),
             f'{preffix}nspdk_tst': metric_nspdk(vsmls, loaders['smiles_tst']),
         }
 
@@ -115,64 +115,41 @@ def print_metrics(metrics):
            f'ms={metrics["m_stab"]:.2f}, ' + \
            f'as={metrics["a_stab"]:.2f}'
 
-def resample_invalid_mols(model, num_samples, atom_list, max_atoms, canonical=True, max_attempts=10):
+def resample_invalid_mols(model, num_samples, data_info, canonical=True, max_attempts=10):
     n = num_samples
     mols = []
 
     for _ in range(max_attempts):
-        x, a = model.sample(n)
-        vmols, _ = get_vmols(mols2smls(gs2mols(x, a, atom_list), canonical))
+        v, e = model.sample(n)
+        vmols, _ = get_vmols(mols2smls(sparsegs2mols(v, e, data_info), canonical))
         mols.extend(vmols)
         n = num_samples - len(mols)
         if len(mols) == num_samples:
             break
 
-    x_valid, a_valid = mols2gs(mols, max_atoms, atom_list)
+    v_valid, e_valid = mols2sparsegs(mols, data_info)
     if n > 0:
-        x_maybe, a_maybe = model.sample(n)
-        return torch.cat((x_valid, x_maybe)), torch.cat((a_valid, a_maybe))
+        v_maybe, e_maybe = model.sample(n)
+        return torch.cat((v_valid, v_maybe)), torch.cat((e_valid, e_maybe))
     else:
-        return x_valid, a_valid
+        return v_valid, e_valid
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-def test_metrics(gsmls, tsmls, max_atom, atom_list, disrupt_mol=None):
+def test_metrics(gsmls, loaders, data_info):
     gmols = [Chem.MolFromSmiles(sml) for sml in gsmls]
     [Chem.Kekulize(mol) for mol in gmols]
-    x, a = mols2gs(gmols, max_atom, atom_list)
-    if disrupt_mol is not None:
-        n, c, i, j = disrupt_mol
-        a[n, :, i, j] = 0
-        a[n, c, i, j] = 1
+    v, e = mols2sparsegs(gmols, data_info)
 
-    metrics = evaluate_molecules(x, a, tsmls, atom_list, correct_mols=False, metrics_only=True)
-
-    print_metrics(metrics['valid'],
-                  metrics['novel'],
-                  metrics['unique'],
-                  metrics['score'],
-                  metrics['novel_abs'],
-                  metrics['unique_abs'], abs=True)
-
+    metrics = evaluate_molecules(v, e, loaders, data_info, metrics_only=True)
+    print(print_metrics(metrics))
 
 if __name__ == '__main__':
     # 10 samples from the QM9 dataset
-    max_atom = 9
-    atom_list = [0, 6, 7, 8, 9]
-    tsmls = [
-            'CCC1(C)CN1C(C)=O',
-            'O=CC1=COC(=O)N=C1',
-            'O=CC1(C=O)CN=CO1',
-            'CCC1CC2C(O)C2O1',
-            'CC1(C#N)C2CN=CN21',
-            'CC1(C)OCC1CO',
-            'O=C1C=CC2NC2CO1',
-            'CC1C=CC(=O)C(C)N1',
-            'COCCC1=CC=NN1',
-            'CN1C(=O)C2C(O)C21C'
-        ]
-
+    from utils.datasets import MOLECULAR_DATASETS, load_dataset
+    data_info = MOLECULAR_DATASETS['qm9']
+    loaders = load_dataset('qm9', 100, split=[0.8, 0.1, 0.1], order='bft')
 
     gsmls = [
             'CC1(C)CN1C(C)=O',
@@ -186,35 +163,4 @@ if __name__ == '__main__':
             'COCCC1=CC=NN1',
             'CN1C(=O)C2C(O)C21C'
         ]
-    test_metrics(gsmls, tsmls, max_atom, atom_list, [0, 2, 1, 0])
-    test_metrics(gsmls, tsmls, max_atom, atom_list, [4, 2, 1, 0])
-
-
-    gsmls = [
-            'CCC1(C)CN1C(C)=O',
-            'CCC1(C)CN1C(C)=O',
-            'O=CC1(C=O)CN=CO1',
-            'CCC1CC2C(O)C2O1',
-            'CC1(C#N)C2CN=CN21',
-            'CC1(C)OCC1CO',
-            'O=C1C=CC2NC2CO1',
-            'CC1C=CC(=O)C(C)N1',
-            'COCCC1=CC=NN1',
-            'CN1C(=O)C2C(O)C21C'
-        ]
-    test_metrics(gsmls, tsmls, max_atom, atom_list)
-
-
-    gsmls = [
-            'CC1(C)CN1C(C)=O',
-            'O=CC1=COC(=O)N=C1',
-            'O=CC1(C=O)CN=CO1',
-            'CCC1CC2C(O)C2O1',
-            'CC1(C#N)C2CN=CN21',
-            'CC1(C)OCC1CO',
-            'O=C1C=CC2NC2CO1',
-            'CC1C=CC(=O)C(C)N1',
-            'COCCC1=CC=NN1',
-            'CN1C(=O)C2C(O)C21C'
-        ]
-    test_metrics(gsmls, tsmls, max_atom, atom_list)
+    test_metrics(gsmls, loaders, data_info)

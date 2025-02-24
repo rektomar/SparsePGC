@@ -6,16 +6,16 @@ import pandas as pd
 from tqdm import tqdm
 from timeit import default_timer
 from rdkit.Chem.Draw import MolsToGridImage
-from utils.graphs import unflatt_tril
 
 from utils.evaluate import evaluate_molecules, resample_invalid_mols, count_parameters, print_metrics
-from utils.molecular import correct_mols, mols2gs
+from utils.molecular import correct_mols, mols2sparsegs
+
+from utils.datasets import MOLECULAR_DATASETS
 
 IGNORED_HYPERPARS = [
     'atom_list',
     'optimizer'
 ]
-
 
 def flatten_dict(d, input_key=''):
     if isinstance(d, dict):
@@ -44,10 +44,9 @@ def backend_hpars_prefix(d):
 def run_epoch(model, loader, optimizer=[], verbose=False):
     nll_sum = 0.
     for b in tqdm(loader, leave=False, disable=verbose):
-        x = b['x'].to(model.device)
-        a = b['a'].to(model.device)
-        a = unflatt_tril(a, x.size(1))
-        nll = -model.logpdf(x, a)
+        v = b['v'].to(model.device)
+        e = b['e'].to(model.device)
+        nll = -model.logpdf(v, e)
         nll_sum += nll
         if optimizer:
             optimizer.zero_grad()
@@ -71,6 +70,8 @@ def train(
     optimizer = optim.Adam(model.parameters(), **hyperpars['optimizer_hpars'])
     # scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.1)
 
+    data_info = MOLECULAR_DATASETS['qm9']
+
     lookahead_counter = num_nonimproving_epochs
     if metric_type in METRIC_TYPES:
         best_metric = 0e0
@@ -85,8 +86,8 @@ def train(
         # scheduler.step()
         model.eval()
 
-        x_sam, a_sam = model.sample(1000)
-        metrics = evaluate_molecules(x_sam, a_sam, loaders, hyperpars['atom_list'], metrics_only=True, canonical=(hyperpars['order']=='canonical'))
+        v_sam, e_sam = model.sample(1000)
+        metrics = evaluate_molecules(v_sam, e_sam, loaders, data_info, metrics_only=True, canonical=(hyperpars['order']=='canonical'))
         metrics_str = print_metrics(metrics)
 
         if metric_type in METRIC_TYPES:
@@ -150,7 +151,7 @@ def evaluate(
     time_res = default_timer() - start
 
     start = default_timer()
-    x_cor, a_cor = mols2gs(correct_mols(x_sam, a_sam, atom_list), x_sam.size(1), atom_list)
+    x_cor, a_cor = mols2sparsegs(correct_mols(x_sam, a_sam, atom_list), x_sam.size(1), atom_list)
     time_cor = default_timer() - start
 
     with torch.no_grad():
