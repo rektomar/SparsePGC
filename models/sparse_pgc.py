@@ -4,6 +4,24 @@ import torch.nn as nn
 from models.backend import backend_selector
 from typing import Optional
 
+from torch.distributions import Categorical
+
+
+class Cardinality(nn.Module):
+    def __init__(self, max_atoms: int, max_bonds: int, device='cuda'):
+        super().__init__()
+
+        self.logits = nn.Parameter(torch.randn(max_atoms, max_bonds,  device=device), requires_grad=True)
+
+    def forward(self, n: torch.Tensor, m: torch.Tensor):
+        logs = self.logits.view(-1).log_softmax(-1).view(*self.logits.shape)
+        return logs[n, m]
+
+    def sample(self, num_samples: int):
+        logs = self.logits.view(-1).log_softmax(-1)
+        indices = Categorical(logits=logs).sample((num_samples,))
+        n, m = torch.div(indices, self.logits.shape[1], rounding_mode='floor'), indices % self.logits.shape[1]
+        return n, m
 
 class SparsePGC(nn.Module):
     def __init__(self, dataset, hpars):
@@ -20,8 +38,8 @@ class SparsePGC(nn.Module):
         self.max_atoms = max_atoms
         self.max_bonds = max_bonds
 
-        self.logits_n = nn.Parameter(torch.randn(max_atoms, device=self.device), requires_grad=True)
-        self.logits_m = nn.Parameter(torch.randn(max_bonds+1, device=self.device), requires_grad=True)
+        self.network_card = Cardinality(self.max_atoms, self.max_bonds)
+
         self.logits_w = nn.Parameter(torch.randn(self.nc,   device=self.device), requires_grad=True)
 
         self.to(hpars['device'])
@@ -46,26 +64,21 @@ class SparsePGC(nn.Module):
 
         n = mask_vtype.sum(dim=1) - 1
         m = mask_etype.sum(dim=1) - 1
-        dist_n = torch.distributions.Categorical(logits=self.logits_n)
-        dist_m = torch.distributions.Categorical(logits=self.logits_m)
 
-
-        logs_n = dist_n.log_prob(n)
-        logs_m = dist_m.log_prob(m)
+        logs_card  = self.network_card(n, m)
         logs_vtype = self.network_vtype(vtype)
         logs_edges = self.network_edges(edges)
         logs_etype = self.network_etype(etype)
         logs_w = torch.log_softmax(self.logits_w, dim=0).unsqueeze(0)
 
-        return logs_n + logs_m + torch.logsumexp(logs_vtype + logs_edges + logs_etype + logs_w, dim=1)
+        return logs_card + torch.logsumexp(logs_vtype + logs_edges + logs_etype + logs_w, dim=1)
 
     def logpdf(self, v: torch.Tensor, e: torch.Tensor):
         return self(v, e).mean()
     
     @torch.no_grad
     def sample(self, num_samples: int):
-        samp_n = torch.distributions.Categorical(logits=self.logits_n).sample((num_samples, ))
-        samp_m = torch.distributions.Categorical(logits=self.logits_m).sample((num_samples, ))
+        samp_n, samp_m = self.network_card.sample(num_samples)
 
         samp_w = torch.distributions.Categorical(logits=self.logits_w).sample((num_samples, ))
 
