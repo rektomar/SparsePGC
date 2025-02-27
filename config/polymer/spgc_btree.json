@@ -1,15 +1,24 @@
 {
     "dataset": "polymer",
-    "model": "marg_sort",
+    "model": "sparse_pgc",
     "order": "canonical",
     "model_hpars": {
         "nc": 256,
-        "backend": "ctree",
-        "bx_hpars": {
-            "nh": 256
+        "backend": "btree",
+        "bvt_hpars": {
+            "nl": 3,
+            "ns": 32,
+            "ni": 32
         },
-        "ba_hpars": {
-            "nh": 256
+        "be_hpars": {
+            "nl": 5,
+            "ns": 32,
+            "ni": 32
+        },
+        "bet_hpars": {
+            "nl": 3,
+            "ns": 32,
+            "ni": 32
         },
         "device": "cuda"
     },

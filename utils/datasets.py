@@ -20,19 +20,24 @@ class MolecularDataset(NamedTuple):
     dataset: str
     max_atoms: int
     max_bonds: int
-    max_types: int
     atom_list: List[int]
     valency_dict: Optional[Dict[int, int]] = None
 
-
+# TODO: add valencies
 MOLECULAR_DATASETS = {
-    'qm9': MolecularDataset('qm9', 9, 13, 5, [0, 6, 7, 8, 9], {6: 4, 7: 3, 8: 2, 9: 1}),
-    'zinc250k': MolecularDataset('zinc250k', 38, 45, 10, [0, 6, 7, 8, 9, 15, 16, 17, 35, 53],
+    'qm9': MolecularDataset('qm9', 9, 13, 
+                            [0, 6, 7, 8, 9], 
+                            {6: 4, 7: 3, 8: 2, 9: 1}),
+    'zinc250k': MolecularDataset('zinc250k', 38, 45, 
+                                 [0, 6, 7, 8, 9, 15, 16, 17, 35, 53],
                                  {6: 4, 7: 3, 8: 2, 9: 1, 15: 3, 16: 2, 17: 1, 35: 1, 53: 1}),
-    # 'moses': MolecularDataset('moses', 27, 8, [0, 6, 7, 8, 9, 16, 17, 35], 
-    #                           {6: 4, 7: 3, 8: 2, 9: 1, 16: 2, 17: 1, 35: 1}),
-    # 'guacamol': MolecularDataset('guacamol', 88, 13, [0, 5, 6, 7, 8, 9, 14, 15, 16, 17, 34, 35, 53]),
-    # 'polymer': MolecularDataset('polymer', 122, 8, [0, 6, 7, 8, 9, 14, 15, 16])
+    'moses': MolecularDataset('moses', 27, 31, 
+                              [0, 6, 7, 8, 9, 16, 17, 35], 
+                              {6: 4, 7: 3, 8: 2, 9: 1, 16: 2, 17: 1, 35: 1}),
+    'guacamol': MolecularDataset('guacamol', 88, 87,  
+                                 [0, 5, 6, 7, 8, 9, 14, 15, 16, 17, 34, 35, 53]),
+    'polymer': MolecularDataset('polymer', 122, 145, 
+                                [0, 6, 7, 8, 9, 14, 15, 16])
 }
 
 
@@ -154,6 +159,23 @@ def preprocess(path, smile_col, data_info, order='canonical'):
 
     torch.save(data_list, f'{path}_{order}.pt')
 
+def valency_analysis(name, order='canonical'):
+    valencies = set()
+    data = torch.load(f'data/{name}_{order}.pt', weights_only=True)
+    for datapoint in data:
+        sml = datapoint['s']
+        mol = Chem.MolFromSmiles(sml)
+        Chem.Kekulize(mol)
+
+        for atom in mol.GetAtoms():
+            atomic_num = atom.GetAtomicNum()
+            valency = atom.GetTotalValence()
+
+            valencies.add((atomic_num, valency)) 
+    print(f'{name} valencies: {valencies}')
+    return valencies
+
+
 class DictDataset(torch.utils.data.Dataset):
     def __init__(self, data):
         self.data = data
@@ -207,23 +229,27 @@ if __name__ == '__main__':
     torch.set_printoptions(threshold=10_000, linewidth=200)
 
     download = True
-    dataset = 'zinc250k'
+    datasets = ['qm9', 'zinc250k', 'moses', 'guacamol', 'polymer']
+    # datasets = ['guacamol', 'polymer']
     orders = ['canonical']
 
-    for order in orders:
-        if download:
-            match dataset:
-                case 'qm9':
-                    download_qm9(order=order)
-                case 'zinc250k':
-                    download_zinc250k(order=order)
-                case 'moses':
-                    download_moses(order=order)
-                case 'guacamol':
-                    download_guacamol(order=order)
-                case 'polymer':
-                    download_polymer(order=order)
-                case _:
-                    os.error('Unsupported dataset.')
+    for dataset in datasets:
+        for order in orders:
+            if download:
+                match dataset:
+                    case 'qm9':
+                        download_qm9(order=order)
+                    case 'zinc250k':
+                        download_zinc250k(order=order)
+                    case 'moses':
+                        download_moses(order=order)
+                    case 'guacamol':
+                        download_guacamol(order=order)
+                    case 'polymer':
+                        download_polymer(order=order)
+                    case _:
+                        os.error('Unsupported dataset.')
 
-        loaders = load_dataset(dataset, 100, split=[0.8, 0.1, 0.1], order=order)
+            loaders = load_dataset(dataset, 100, split=[0.8, 0.1, 0.1], order=order)
+
+    # valency_analysis('zinc250k')
