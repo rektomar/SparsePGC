@@ -2,14 +2,15 @@ import json
 import torch
 
 from rdkit import RDLogger
-from utils.datasets import MOLECULAR_DATASETS, BASE_DIR, load_dataset
+from utils.datasets import BASE_DIR, load_dataset
 from utils.train import train, evaluate
 from utils.evaluate import count_parameters
 
-from models import sparse_pgc
+from models import sparse_pgc, sparse_hpgc
 
 MODELS = {
     **sparse_pgc.MODELS,
+    **sparse_hpgc.MODELS,
 }
 
 BASE_DIR_TRN = f'{BASE_DIR}trn/'
@@ -22,7 +23,7 @@ if __name__ == '__main__':
     dataset = 'zinc250k'
 
     backends = [
-        'spgc_btree'
+        'shpgc_rtree'
     ]
 
     for backend in backends:
