@@ -41,10 +41,6 @@ MOLECULAR_DATASETS = {
 }
 
 
-BOND_ENCODER = {Chem.BondType.SINGLE: 0, Chem.BondType.DOUBLE: 1, Chem.BondType.TRIPLE: 2, Chem.BondType.AROMATIC: 3}
-BOND_DECODER = {0: Chem.BondType.SINGLE, 1: Chem.BondType.DOUBLE, 2: Chem.BondType.TRIPLE, 3: Chem.BondType.AROMATIC}
-
-
 # Moses Atoms - C:6, N:7, S:16, O:8, F:9, Cl:17, Br:35, H:1
 # Guacamol Atoms - C:6, N:7, O:8, F:9, B:5, Br:35, Cl:17, I:53, P:15, S:16, Se:34, Si:14, H:1
 

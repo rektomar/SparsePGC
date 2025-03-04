@@ -1,6 +1,7 @@
 import os
 
-from utils.datasets import MOLECULAR_DATASETS, BOND_DECODER
+from utils.datasets import MOLECULAR_DATASETS
+from utils.molecular import BOND_DECODER
 from models.einsum import Graph, EinsumNetwork, ExponentialFamilyArray
 
 class BTreeSPN(EinsumNetwork.EinsumNetwork):
