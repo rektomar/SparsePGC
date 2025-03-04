@@ -86,6 +86,8 @@ def download_moses(dir='data/', order='canonical'):
     test_url  = 'https://media.githubusercontent.com/media/molecularsets/moses/master/data/test.csv'
     # test_url  = 'https://media.githubusercontent.com/media/molecularsets/moses/master/data/test_scaffolds.csv'
 
+    print('Downloading and preprocessing the Moses dataset.')
+
     # NOTE: Downloading just train split so far.
     if not os.path.exists(f'{file}.csv'):
         urllib.request.urlretrieve(train_url, f'{file}.csv')
@@ -104,6 +106,8 @@ def download_guacamol(dir='data/', order='canonical'):
     valid_url = 'https://figshare.com/ndownloader/files/13612766'
     test_url = 'https://figshare.com/ndownloader/files/13612757'
 
+    print('Downloading and preprocessing the Guacamol dataset.')
+
     # NOTE: Downloading just train split so far.
     if not os.path.exists(f'{file}.csv'):
         urllib.request.urlretrieve(train_url, f'{file}.csv')
@@ -121,6 +125,8 @@ def download_polymer(dir='data/', order='canonical'):
     train_url = 'https://raw.githubusercontent.com/wengong-jin/hgraph2graph/refs/heads/master/data/polymers/train.txt'
     valid_url = 'https://raw.githubusercontent.com/wengong-jin/hgraph2graph/refs/heads/master/data/polymers/valid.txt'
     test_url  = 'https://raw.githubusercontent.com/wengong-jin/hgraph2graph/refs/heads/master/data/polymers/test.txt'
+
+    print('Downloading and preprocessing the Polymer dataset.')
 
     # NOTE: Downloading just train split so far.
     if not os.path.exists(f'{file}.csv'):
