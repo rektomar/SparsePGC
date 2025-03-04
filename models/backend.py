@@ -65,9 +65,10 @@ def backend_selector(dataset, hpars):
             network_vt = BTreeSPN(   nd_vt, nk_vt, nc, **hpars['bvt_hpars'])
             network_e  = BTreeSPN(   nd_e,  nk_e,  nc, **hpars['be_hpars'])
             network_et = BTreeSPN(   nd_et, nk_et, nc, **hpars['bet_hpars'])
-        # case 'rtree':
-        #     network_x = RTreeSPN(   nd_x, nk_x, nc, **hpars['bx_hpars'])
-        #     network_a = RTreeSPN(   nd_a, nk_a, nc, **hpars['ba_hpars'])
+        case 'rtree':
+            network_vt = RTreeSPN(   nd_vt, nk_vt, nc, **hpars['bvt_hpars'])
+            network_e  = RTreeSPN(   nd_e,  nk_e,  nc, **hpars['be_hpars'])
+            network_et = RTreeSPN(   nd_et, nk_et, nc, **hpars['bet_hpars'])
         case _:
             os.error('Unknown backend')
 

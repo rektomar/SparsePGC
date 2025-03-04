@@ -38,9 +38,9 @@ class SparsePGC(nn.Module):
         self.max_atoms = max_atoms
         self.max_bonds = max_bonds
 
-        self.network_card = Cardinality(self.max_atoms, self.max_bonds)
+        self.network_card = Cardinality(self.max_atoms, self.max_bonds, device=hpars['device'])
 
-        self.logits_w = nn.Parameter(torch.randn(self.nc,   device=self.device), requires_grad=True)
+        self.logits_w = nn.Parameter(torch.randn(self.nc,   device=hpars['device']), requires_grad=True)
 
         self.to(hpars['device'])
     
