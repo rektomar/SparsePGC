@@ -186,3 +186,7 @@ if __name__ == '__main__':
     smilesb = mols2smls(molsb)
     print(smiles)
     print(smilesb)
+
+    from rdkit.Chem import Draw
+    img = Draw.MolsMatrixToGridImage([molsa, molsb], subImgSize=(200, 200))
+    img.save("molecules_sparseg.png")

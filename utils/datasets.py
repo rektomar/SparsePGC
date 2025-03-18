@@ -10,11 +10,10 @@ from tqdm import tqdm
 from rdkit import RDLogger
 
 from utils.molecular import mol2sparseg, pad
+from utils.order import order_mol
 
-# from scipy.sparse import csr_matrix
-# from scipy.sparse.csgraph import breadth_first_order, depth_first_order, reverse_cuthill_mckee
 
-BASE_DIR = ''
+BASE_DIR = 'results/'
 
 class MolecularDataset(NamedTuple):
     dataset: str
@@ -149,15 +148,14 @@ def preprocess(path, smile_col, data_info, order='canonical'):
     for sml in tqdm(smls_list):
         mol = Chem.MolFromSmiles(sml)
         Chem.Kekulize(mol)
-        n = mol.GetNumAtoms()
-        m = mol.GetNumBonds()
-
-        if m < 1:
+ 
+        if mol.GetNumBonds() < 1:
             print(f'Skipping {sml}')
             continue
+        mol = order_mol(mol, data_info, order=order)
         atom_tensor, bond_tensor = mol2sparseg(mol, data_info)
 
-        data_list.append({'s': sml, 'v': atom_tensor, 'e': bond_tensor, 'n': n, 'm': m})
+        data_list.append({'s': sml, 'v': atom_tensor, 'e': bond_tensor, 'n': mol.GetNumAtoms(), 'm': mol.GetNumBonds()})
 
     torch.save(data_list, f'{path}_{order}.pt')
 
@@ -208,7 +206,7 @@ def load_dataset(name, batch_size, split, seed=0, dir='data/', order='canonical'
     torch.manual_seed(seed)
     x_trn, x_val, x_tst = torch.utils.data.random_split(x, split)
 
-    loader_trn = torch.utils.data.DataLoader(x_trn, batch_size=batch_size, num_workers=2, shuffle=False, collate_fn=collate_wrapper, pin_memory=True)
+    loader_trn = torch.utils.data.DataLoader(x_trn, batch_size=batch_size, num_workers=2, shuffle=True , collate_fn=collate_wrapper, pin_memory=True)
     loader_val = torch.utils.data.DataLoader(x_val, batch_size=batch_size, num_workers=2, shuffle=False, collate_fn=collate_wrapper, pin_memory=True)
     loader_tst = torch.utils.data.DataLoader(x_tst, batch_size=batch_size, num_workers=2, shuffle=False, collate_fn=collate_wrapper, pin_memory=True)
 
@@ -231,9 +229,9 @@ if __name__ == '__main__':
     torch.set_printoptions(threshold=10_000, linewidth=200)
 
     download = True
-    datasets = ['qm9', 'zinc250k', 'moses', 'guacamol', 'polymer']
+    datasets = ['qm9', 'zinc250k']
     # datasets = ['guacamol', 'polymer']
-    orders = ['canonical']
+    orders = ['canonical', 'bft']
 
     for dataset in datasets:
         for order in orders:
