@@ -51,6 +51,56 @@ class RTreeSPN(EinsumNetwork.EinsumNetwork):
         super().__init__(graph, args)
         self.initialize()
 
+class PTreeSPN(EinsumNetwork.EinsumNetwork):
+    def __init__(self,
+                 nd,
+                 nk,
+                 nc,
+                 perms,
+                 nl,
+                 ns,
+                 ni
+                 ):
+        args = EinsumNetwork.Args(
+            num_var=nd,
+            num_dims=1,
+            num_input_distributions=ni,
+            num_sums=ns,
+            num_classes=nc,
+            exponential_family=ExponentialFamilyArray.CategoricalArray,
+            exponential_family_args={'K': nk},
+            use_em=False)
+        graph = Graph.permuted_binary_trees(perms, nl)
+
+        super().__init__(graph, args)
+        self.initialize()
+
+import random
+
+def generate_unique_perms(n, m):
+    arr = list(range(n))
+    unique_perms = set()
+
+    while len(unique_perms) < m:
+        random.shuffle(arr)
+        unique_perms.add(tuple(arr)) 
+
+    return [list(p) for p in unique_perms]
+
+import torch
+
+def create_perms(max_atoms, max_bonds, nr):
+    perms_vt = generate_unique_perms(max_atoms, nr)
+    perms_et = generate_unique_perms(max_bonds, nr)
+
+    perms_e = []
+    for p in perms_et:
+        e = torch.arange(2*max_bonds, dtype=torch.int)
+        perm = e.view(max_bonds, 2)[p].view(-1).tolist()
+        perms_e.append(perm)
+
+    return perms_vt, perms_e, perms_et
+
 
 def backend_selector(dataset, hpars):
     data_info = MOLECULAR_DATASETS[dataset]
@@ -70,6 +120,11 @@ def backend_selector(dataset, hpars):
             network_vt = RTreeSPN(   nd_vt, nk_vt, nc, **hpars['bvt_hpars'])
             network_e  = RTreeSPN(   nd_e,  nk_e,  nc, **hpars['be_hpars'])
             network_et = RTreeSPN(   nd_et, nk_et, nc, **hpars['bet_hpars'])
+        case 'ptree':
+            perms_vt, perms_e, perms_et = create_perms(data_info.max_atoms, data_info.max_bonds, hpars['nr'])
+            network_vt = PTreeSPN(   nd_vt, nk_vt, nc, perms_vt, **hpars['bvt_hpars'])
+            network_e  = PTreeSPN(   nd_e,  nk_e,  nc, perms_e, **hpars['be_hpars'])
+            network_et = PTreeSPN(   nd_et, nk_et, nc, perms_et, **hpars['bet_hpars'])
         case _:
             os.error('Unknown backend')
 
