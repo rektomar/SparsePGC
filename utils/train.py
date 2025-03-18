@@ -35,7 +35,7 @@ def backend_hpars_prefix(d):
             case 'be_hpars':
                 o[key] = {'e' + str(k): v for k, v in value.items()}
             case 'bet_hpars':
-                o[key] = {'e' + str(k): v for k, v in value.items()}
+                o[key] = {'et' + str(k): v for k, v in value.items()}
             case _:
                 if isinstance(value, dict):
                     o[key] = backend_hpars_prefix(value)
