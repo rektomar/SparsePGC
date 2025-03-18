@@ -6,11 +6,10 @@ from utils.datasets import MOLECULAR_DATASETS
 NUM_EPOCHS = 40
 
 
-def template_btree(nl: int=4,            ns: int=40, ni: int=40): return {"nl": nl,           "ns": ns, "ni": ni}
-def template_vtree(nl: int=4,            ns: int=40, ni: int=40): return {"nl": nl,           "ns": ns, "ni": ni}
-def template_rtree(nl: int=4, nr: int=1, ns: int=40, ni: int=40): return {"nl": nl, "nr": nr, "ns": ns, "ni": ni}
-def template_ptree(nl: int=4,            ns: int=40, ni: int=40): return {"nl": nl,           "ns": ns, "ni": ni}
-def template_ctree(nh: int=64): return {"nh": nh}
+def template_shpgc_btree(nl: int=4,            ns: int=40, ni: int=40): return {"nl": nl,           "ns": ns, "ni": ni}
+def template_shpgc_rtree(nl: int=4, nr: int=1, ns: int=40, ni: int=40): return {"nl": nl, "nr": nr, "ns": ns, "ni": ni}
+def template_shpgc_ptree(nl: int=4,            ns: int=40, ni: int=40): return {"nl": nl,           "ns": ns, "ni": ni}
+
 
 
 def template_sort(
@@ -20,8 +19,9 @@ def template_sort(
     nc: int = 100,
     nr: int = None,
     backend: str = "btree",
-    bx_hpars: dict = template_btree(),
-    ba_hpars: dict = template_btree(),
+    bvt_hpars: dict = template_shpgc_btree(),
+    be_hpars: dict = template_shpgc_btree(),
+    bet_hpars: dict = template_shpgc_btree(),
     batch_size: int = 1000,
     lr: float = 0.05,
     seed: int = 0
@@ -33,8 +33,9 @@ def template_sort(
         "model_hpars": {
             "nc": nc,
             "backend": backend,
-            "bx_hpars": bx_hpars,
-            "ba_hpars": ba_hpars,
+            "bvt_hpars": bvt_hpars,
+            "be_hpars": be_hpars,
+            "bet_hpars": bet_hpars,
             "device": "cuda"
         },
         "optimizer": "adam",
@@ -62,11 +63,10 @@ HYPERPARS_TEMPLATES = [
 
 
 if __name__ == '__main__':
-    for dataset in MOLECULAR_DATASETS.keys():
+    for dataset in ['qm9', 'zinc250k']:
         dir = f'config/{dataset}'
-        if os.path.isdir(dir) != True:
-            os.makedirs(dir)
+        # if os.path.isdir(dir) != True:
+        #     os.makedirs(dir)
         for template in HYPERPARS_TEMPLATES:
-            hyperpars = template(dataset)
-            with open(f'{dir}/{hyperpars["model"]}.json', 'w') as f:
-                json.dump(hyperpars, f, indent=4)
+            hyperpars = template(dataset, 'sparse_hpgc')
+            print(json.dumps(hyperpars, indent=4))

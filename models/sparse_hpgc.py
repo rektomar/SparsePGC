@@ -92,7 +92,7 @@ class SparseHPGC(nn.Module):
         return v.to(device='cpu', dtype=torch.int), e.to(device='cpu', dtype=torch.int)
     
     @torch.no_grad
-    def sample(self, num_samples: int, chunk_size: int=500):
+    def sample(self, num_samples: int, chunk_size: int=2000):
         v_sam = []
         e_sam = []
 

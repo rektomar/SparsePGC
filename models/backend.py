@@ -1,4 +1,6 @@
 import os
+import random
+import torch
 
 from utils.datasets import MOLECULAR_DATASETS
 from utils.molecular import BOND_DECODER
@@ -75,8 +77,6 @@ class PTreeSPN(EinsumNetwork.EinsumNetwork):
         super().__init__(graph, args)
         self.initialize()
 
-import random
-
 def generate_unique_perms(n, m):
     arr = list(range(n))
     unique_perms = set()
@@ -86,8 +86,6 @@ def generate_unique_perms(n, m):
         unique_perms.add(tuple(arr)) 
 
     return [list(p) for p in unique_perms]
-
-import torch
 
 def create_perms(max_atoms, max_bonds, nr):
     perms_vt = generate_unique_perms(max_atoms, nr)

@@ -10,14 +10,12 @@ from utils.datasets import MOLECULAR_DATASETS, BASE_DIR, load_dataset
 from utils.train import train, evaluate, dict2str, flatten_dict, backend_hpars_prefix
 from utils.evaluate import count_parameters
 
-from models import molspn_zero
-from models import molspn_marg
+from models import sparse_pgc
 
 # nohup python -m gridsearch > gridsearch.log &
 
 MODELS = {
-    **molspn_zero.MODELS,
-    **molspn_marg.MODELS
+    **sparse_pgc.MODELS,
     }
 
 BASE_DIR_GS = f'{BASE_DIR}gs0/'
@@ -28,11 +26,10 @@ def unsupervised(dataset, name, par_buffer):
     RDLogger.DisableLog('rdApp.*')
 
     hyperpars = par_buffer[int(os.environ["SLURM_ARRAY_TASK_ID"])]
-    hyperpars['atom_list'] = MOLECULAR_DATASETS[dataset]['atom_list']
 
     loaders = load_dataset(dataset, hyperpars['batch_size'], [0.8, 0.1, 0.1], seed=hyperpars['seed'], order=hyperpars['order'])
 
-    model = MODELS[name](loaders['loader_trn'], hyperpars['model_hpars'])
+    model = MODELS[name](dataset, hyperpars['model_hpars'])
     print(dataset)
     print(json.dumps(hyperpars, indent=4))
     print(model)
@@ -89,8 +86,8 @@ def submit_job(dataset, model, par_buffer, device, max_sub):
 if __name__ == "__main__":
     par_buffer = []
     all_models = [
-        'marg_sort',
-        # 'zero_sort',
+        'sparse_pgc',
+        # 'sparse_hpgc',
     ]
     gpu_models = MODELS.keys()
 

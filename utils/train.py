@@ -30,10 +30,12 @@ def backend_hpars_prefix(d):
     o = {}
     for key, value in d.items():
         match key:
-            case 'bx_hpars':
-                o[key] = {'x' + str(k): v for k, v in value.items()}
-            case 'ba_hpars':
-                o[key] = {'a' + str(k): v for k, v in value.items()}
+            case 'bvt_hpars':
+                o[key] = {'vt' + str(k): v for k, v in value.items()}
+            case 'be_hpars':
+                o[key] = {'e' + str(k): v for k, v in value.items()}
+            case 'bet_hpars':
+                o[key] = {'e' + str(k): v for k, v in value.items()}
             case _:
                 if isinstance(value, dict):
                     o[key] = backend_hpars_prefix(value)
@@ -123,7 +125,6 @@ def train(
             torch.save(model, path)
             best_model_path = path
             save_model = False
-            os.system(f'chmod -R 774 {base_dir}')
 
     return best_model_path
 
@@ -198,7 +199,5 @@ def evaluate(
     img_sam.save(path_images + f'_san.png')
     img_res.save(path_images + f'_res.png')
     img_cor.save(path_images + f'_cor.png')
-
-    os.system(f'chmod -R 774 {base_dir}')
 
     return metrics
