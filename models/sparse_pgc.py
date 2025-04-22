@@ -10,18 +10,41 @@ from torch.distributions import Categorical
 class Cardinality(nn.Module):
     def __init__(self, max_atoms: int, max_bonds: int, device='cuda'):
         super().__init__()
+        self.max_atoms = max_atoms
+        self.max_bonds = max_bonds
 
-        self.logits = nn.Parameter(torch.randn(max_atoms, max_bonds,  device=device), requires_grad=True)
+        self.logits = nn.Parameter(torch.randn(max_atoms, max_bonds, device=device), requires_grad=True)
+
+    @property
+    def device(self):
+        return next(iter(self.parameters())).device
 
     def forward(self, n: torch.Tensor, m: torch.Tensor):
         logs = self.logits.view(-1).log_softmax(-1).view(*self.logits.shape)
         return logs[n, m]
 
+    @torch.no_grad
     def sample(self, num_samples: int):
         logs = self.logits.view(-1).log_softmax(-1)
         indices = Categorical(logits=logs).sample((num_samples,))
         n, m = torch.div(indices, self.logits.shape[1], rounding_mode='floor'), indices % self.logits.shape[1]
         return n, m
+    
+    @torch.no_grad
+    def sample_conditional(self, n: torch.Tensor, m: torch.Tensor):
+        assert len(n) == len(m)
+        atom_mask = torch.arange(self.max_atoms, device=self.device).view(1, -1) <= n.view(-1, 1)
+        bond_mask = torch.arange(self.max_bonds, device=self.device).view(1, -1) <= m.view(-1, 1) 
+
+        # atom_mask to [bs, max_atoms, 1]
+        # bond_mask to [bs, 1, max_bonds]
+        mask = atom_mask.unsqueeze(2) | bond_mask.unsqueeze(1)
+        logits = self.logits.unsqueeze(0).expand(mask.shape[0], -1, -1).clone()
+        logits[mask] = -torch.inf
+        logs = logits.view(-1, self.max_atoms*self.max_bonds).log_softmax(-1)
+        indices = Categorical(logits=logs).sample()
+        n_cond, m_cond = torch.div(indices, self.logits.shape[1], rounding_mode='floor'), indices % self.logits.shape[1]
+        return n_cond, m_cond
 
 class SparsePGC(nn.Module):
     def __init__(self, dataset, hpars):
@@ -99,7 +122,7 @@ class SparsePGC(nn.Module):
         return v.to(device='cpu', dtype=torch.int), e.to(device='cpu', dtype=torch.int)
     
     @torch.no_grad
-    def sample(self, num_samples: int, chunk_size: int=2000):
+    def sample(self, num_samples: int, chunk_size: int=1000):
         v_sam = []
         e_sam = []
 
@@ -115,6 +138,53 @@ class SparsePGC(nn.Module):
 
         return v_sam, e_sam
 
+    @torch.no_grad
+    def sample_conditional(self, v_cond: torch.tensor, e_cond: torch.tensor, n=None, m=None):
+
+        vtype_o = v_cond[..., 1]
+        edges_o, etype_o = e_cond[..., :2], e_cond[..., 2]
+        edges_o = torch.flatten(edges_o, start_dim=1)
+
+        mask_vtype = vtype_o != -1
+        mask_edges = edges_o != -1
+        mask_etype = etype_o != -1
+        
+        if m is not None and n is not None:
+            samp_n, samp_m = n, m
+        else:
+            n_o = mask_vtype.sum(dim=1) - 1
+            m_o = mask_etype.sum(dim=1) - 1
+            samp_n, samp_m = self.network_card.sample_conditional(n_o, m_o)
+
+        num_samples = len(v_cond)
+
+        self.network_vtype.set_marginalization_mask(mask_vtype)
+        self.network_edges.set_marginalization_mask(mask_edges)
+        self.network_etype.set_marginalization_mask(mask_etype)
+
+        ll_vtype = self.network_vtype(vtype_o)
+        ll_edges = self.network_edges(edges_o)
+        ll_etype = self.network_etype(etype_o)
+
+        logits_w = self.logits_w.unsqueeze(0) + ll_vtype + ll_edges + ll_etype
+        samp_w = torch.distributions.Categorical(logits=logits_w).sample()
+
+        vtype = self.network_vtype.sample(num_samples, class_idxs=samp_w, x=vtype_o)
+        edges = self.network_edges.sample(num_samples, class_idxs=samp_w, x=edges_o)
+        etype = self.network_etype.sample(num_samples, class_idxs=samp_w, x=etype_o)
+
+        mask_v = torch.arange(self.max_atoms, device=self.device).unsqueeze(0) <= samp_n.unsqueeze(1)
+        ids = torch.arange(self.max_atoms, device=self.device)
+        ids = ids.unsqueeze(0).unsqueeze(-1).expand(num_samples, -1, -1)
+        v = torch.cat((ids, vtype.unsqueeze(-1)), -1)
+        v[~mask_v] = -1
+
+        mask_e = torch.arange(self.max_bonds, device=self.device).unsqueeze(0) <= samp_m.unsqueeze(1)
+        edges = edges.view(edges.shape[0], -1, 2)
+        e = torch.cat((edges, etype.unsqueeze(-1)), -1)
+        e[~mask_e] = -1
+
+        return v.to(device='cpu', dtype=torch.int), e.to(device='cpu', dtype=torch.int)
 
 MODELS = {
     'sparse_pgc': SparsePGC,

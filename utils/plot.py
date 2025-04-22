@@ -2,7 +2,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Chem.Draw import MolsToGridImage, rdMolDraw2D
 from utils.evaluate import resample_invalid_mols
-from utils.molecular import correct_mols, gs2mols, isvalid
+from utils.molecular import sparsegs2mols, isvalid
 
 
 def get_hit(mol, patt):
@@ -63,9 +63,9 @@ def plot_grid_conditional(smiles_mat, smarts_patts, fname="cond_mols", useSVG=Fa
     else:    
         img.save(f'plots/{fname}.png')
 
-def plot_grid_unconditional(model, nrows, ncols, max_atoms, atom_list, sub_img_size=(200, 100), dname='plots/', fname="unco_mols", useSVG=False):
-    x, a = resample_invalid_mols(model, 5*nrows*ncols, atom_list, max_atoms, max_attempts=10)
-    mols = gs2mols(x, a, atom_list)  
+def plot_grid_unconditional(model, nrows, ncols, data_info, sub_img_size=(400, 400), dname='plots/', fname="unco_mols", useSVG=False):
+    v, e = resample_invalid_mols(model, 5*nrows*ncols, data_info, max_attempts=10)
+    mols = sparsegs2mols(v, e, data_info)  
     vmols = list(filter(isvalid, mols))
     img = MolsToGridImage(vmols[:nrows*ncols], molsPerRow=ncols, subImgSize=sub_img_size, useSVG=useSVG, padding=0)
     if useSVG:
