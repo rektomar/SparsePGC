@@ -77,7 +77,7 @@ class SparsePGC(nn.Module):
         e = torch.cat((edges, etype.unsqueeze(-1)), -1)
         e[~mask_e] = -1
 
-        return v.to(device='cpu', dtype=torch.int), e.to(device='cpu', dtype=torch.int)
+        return v, e
     
     @torch.no_grad
     def sample(self, num_samples: int, chunk_size: int=1000):
