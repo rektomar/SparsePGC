@@ -1,6 +1,6 @@
 import torch
 from rdkit import Chem
-from utils.molecular import mols2sparsegs, sparsegs2mols, mols2smls, get_vmols
+from utils.molecular import mols2sparsegs, sparsegs2mols, mols2smls, get_vmols, validate_sparsegs
 
 from utils.metrics.nspdk import metric_nspdk
 # from utils.metrics.kldiv import metric_k
@@ -89,18 +89,21 @@ def evaluate_molecules(
             # f'{preffix}kldiv_trn': metric_k(vsmls, loaders['smiles_trn']),
             # f'{preffix}nspdk_trn': metric_nspdk(vsmls, loaders['smiles_trn']),
         }
+        print('Finished evaluating trn set')
     if evaluate_val == True:
         metrics = metrics | {
             f'{preffix}fcd_val'  : metric_f(vsmls, loaders['smiles_val'], device, canonical),
             # f'{preffix}kldiv_val': metric_k(vsmls, loaders['smiles_val']),
             f'{preffix}nspdk_val': metric_nspdk(vsmls, loaders['smiles_val']),
         }
+        print('Finished evaluating val set')
     if evaluate_tst == True:
         metrics = metrics | {
             f'{preffix}fcd_tst'  : metric_f(vsmls, loaders['smiles_tst'], device, canonical),
             # f'{preffix}kldiv_tst': metric_k(vsmls, loaders['smiles_tst']),
             f'{preffix}nspdk_tst': metric_nspdk(vsmls, loaders['smiles_tst']),
         }
+        print('Finished evaluating tst set')
 
     if metrics_only == True:
         return metrics
@@ -115,12 +118,32 @@ def print_metrics(metrics):
            f'ms={metrics["m_stab"]:.2f}, ' + \
            f'as={metrics["a_stab"]:.2f}'
 
-def resample_invalid_mols(model, num_samples, data_info, canonical=True, max_attempts=10):
+def conditional_fix(model, v, e, n, m, max_attempts=5):
+    vv, ev = validate_sparsegs(v, e)
+    for _ in range(max_attempts):
+        vv, ev = model.sample_conditional(vv, ev, n, m)
+        vv, ev = validate_sparsegs(vv, ev)
+    return vv, ev
+
+def sample_with_fix(model, num_samples, fix_type='remove'):
+    v, e = model.sample(num_samples)
+    if fix_type == 'remove':
+        vv, ev = validate_sparsegs(v, e)
+    elif fix_type == 'conditional':
+        n = (v[..., 1] != -1).sum(dim=1) - 1
+        m = (e[..., 2] != -1).sum(dim=1) - 1
+        vv, ev = conditional_fix(model, v, e, n, m)
+    else:
+        raise Exception(f"Invalid fix_type {fix_type}")
+
+    return vv.to(device='cpu', dtype=torch.int), ev.to(device='cpu', dtype=torch.int)
+
+def resample_invalid_mols(model, num_samples, data_info, canonical=True, fix_type='remove', max_attempts=10):
     n = num_samples
     mols = []
 
     for _ in range(max_attempts):
-        v, e = model.sample(n)
+        v, e = sample_with_fix(model, num_samples, fix_type=fix_type)
         vmols, _ = get_vmols(mols2smls(sparsegs2mols(v, e, data_info), canonical))
         mols.extend(vmols)
         n = num_samples - len(mols)

@@ -23,7 +23,7 @@ if __name__ == '__main__':
     dataset = 'zinc250k'
 
     backends = [
-        'shpgc_rtree'
+        'spgc_rtree'
     ]
 
     for backend in backends:

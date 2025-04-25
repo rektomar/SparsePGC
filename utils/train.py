@@ -7,7 +7,7 @@ from tqdm import tqdm
 from timeit import default_timer
 from rdkit.Chem.Draw import MolsToGridImage
 
-from utils.evaluate import evaluate_molecules, resample_invalid_mols, count_parameters, print_metrics
+from utils.evaluate import evaluate_molecules, resample_invalid_mols, count_parameters, print_metrics, sample_with_fix
 from utils.molecular import correct_mols, mols2sparsegs
 
 from utils.datasets import MOLECULAR_DATASETS
@@ -88,7 +88,7 @@ def train(
         # scheduler.step()
         model.eval()
 
-        v_sam, e_sam = model.sample(1000)
+        v_sam, e_sam = sample_with_fix(model, 1000, fix_type=hyperpars['fix'])
         metrics = evaluate_molecules(v_sam, e_sam, loaders, data_info, metrics_only=True, canonical=(hyperpars['order']=='canonical'))
         metrics_str = print_metrics(metrics)
 
@@ -144,19 +144,25 @@ def evaluate(
     data_info = MOLECULAR_DATASETS[hyperpars['dataset']]
 
     start = default_timer()
-    x_sam, a_sam = model.sample(num_samples)
+    v_sam, e_sam = sample_with_fix(model, num_samples, fix_type=hyperpars['fix']) # TODO: change fix type to hyperpar
     time_sam = default_timer() - start
+    print(f'Finished sampling {time_sam} s')
 
     start = default_timer()
-    x_res, a_res = resample_invalid_mols(model, num_samples, data_info, canonical=canonical)
+    v_res, e_res = resample_invalid_mols(model, num_samples, data_info, canonical=canonical, fix_type=hyperpars['fix'])
     time_res = default_timer() - start
+    print(f'Finished resampling {time_res} s')
 
-    start = default_timer()
-    x_cor, a_cor = mols2sparsegs(correct_mols(x_sam, a_sam, data_info), data_info)
-    time_cor = default_timer() - start
+
+    # start = default_timer()
+    # v_cor, e_cor = mols2sparsegs(correct_mols(v_sam, e_sam, data_info), data_info)
+    # time_cor = default_timer() - start
+    # print(f'Finished correction {time_cor} s')
+
 
     with torch.no_grad():
         if compute_nll == True:
+            print('Starting lls')
             nll_trn_approx = run_epoch(model, loaders['loader_trn'], verbose=verbose)
             nll_val_approx = run_epoch(model, loaders['loader_val'], verbose=verbose)
             nll_tst_approx = run_epoch(model, loaders['loader_tst'], verbose=verbose)
@@ -165,20 +171,21 @@ def evaluate(
                 'nll_val_approx': nll_val_approx,
                 'nll_tst_approx': nll_tst_approx
             }
+            print('Finished lls')
         else:
             metrics_neglogliks = {}
-
-    mols_sam, _, metrics_sam = evaluate_molecules(x_sam, a_sam, loaders, data_info, True, True, True, preffix='sam_', canonical=canonical)
-    mols_res, _, metrics_res = evaluate_molecules(x_res, a_res, loaders, data_info, True, True, True, preffix='res_', canonical=canonical)
-    mols_cor, _, metrics_cor = evaluate_molecules(x_cor, a_cor, loaders, data_info, True, True, True, preffix='cor_', canonical=canonical)
+    print('Starting advanced metrics')
+    mols_sam, _, metrics_sam = evaluate_molecules(v_sam, e_sam, loaders, data_info, True, True, True, preffix='sam_', canonical=canonical)
+    mols_res, _, metrics_res = evaluate_molecules(v_res, e_res, loaders, data_info, True, True, True, preffix='res_', canonical=canonical)
+    # mols_cor, _, metrics_cor = evaluate_molecules(v_cor, e_cor, loaders, data_info, True, True, True, preffix='cor_', canonical=canonical)
 
     metrics = {**metrics_sam,
                **metrics_res,
-               **metrics_cor,
+               # **metrics_cor,
                **metrics_neglogliks,
                "time_sam": time_sam,
                "time_res": time_res,
-               "time_cor": time_cor + time_sam,
+               # "time_cor": time_cor + time_sam,
                "num_params": count_parameters(model)}
 
     dir = base_dir + f'eval/metrics/{hyperpars["dataset"]}/{hyperpars["model"]}/'
@@ -194,10 +201,10 @@ def evaluate(
 
     img_sam = MolsToGridImage(mols=mols_sam[0:64], molsPerRow=8, subImgSize=(200, 200), useSVG=False)
     img_res = MolsToGridImage(mols=mols_res[0:64], molsPerRow=8, subImgSize=(200, 200), useSVG=False)
-    img_cor = MolsToGridImage(mols=mols_cor[0:64], molsPerRow=8, subImgSize=(200, 200), useSVG=False)
+    # img_cor = MolsToGridImage(mols=mols_cor[0:64], molsPerRow=8, subImgSize=(200, 200), useSVG=False)
 
     img_sam.save(path_images + f'_san.png')
     img_res.save(path_images + f'_res.png')
-    img_cor.save(path_images + f'_cor.png')
+    # img_cor.save(path_images + f'_cor.png')
 
     return metrics

@@ -33,7 +33,8 @@
             0.82
         ]
     },
-    "num_epochs": 10,
+    "fix": "remove",
+    "num_epochs": 20,
     "batch_size": 256,
     "seed": 0
 }

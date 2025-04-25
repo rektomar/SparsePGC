@@ -56,19 +56,34 @@ def valid_bond(start, end, existing_bonds, n_atoms):
         return False
     return True
 
-def sparseg2mol(atom_tensor, bond_tensor, data_info):
+def validate_sparseg(atom_tensor: torch.tensor, bond_tensor: torch.tensor):
+    existing_bonds = set()
+    n_atoms = len(unpad(atom_tensor))
+
+    for i, (start, end, bond_type) in enumerate(unpad(bond_tensor)):
+        start, end, bond_type = int(start), int(end), int(bond_type)
+
+        if not valid_bond(start, end, existing_bonds, n_atoms):
+            bond_tensor[i] = -1
+        else:
+            existing_bonds.add((start, end))
+
+    return atom_tensor, bond_tensor
+
+# NOTE: could be done in a more memory efficient way, could be done in place
+def validate_sparsegs(atom_tensor: torch.tensor, bond_tensor: torch.tensor):
+    validated_gs = [validate_sparseg(v, e) for v, e in zip(atom_tensor, bond_tensor)]
+    atom_tensor_v, bond_tensor_v = zip(*validated_gs)
+    return torch.stack(atom_tensor_v, 0), torch.stack(bond_tensor_v, 0)
+    
+def sparseg2mol(atom_tensor: torch.tensor, bond_tensor: torch.tensor, data_info):
     mol = Chem.RWMol()
 
     for _, atom in atom_tensor:
         mol.AddAtom(Chem.Atom(data_info.atom_list[int(atom)]))
     
-    existing_bonds = set()
-    n_atoms = mol.GetNumAtoms()
     for start, end, bond_type in bond_tensor:
         start, end, bond_type = int(start), int(end), int(bond_type)
-        if not valid_bond(start, end, existing_bonds, n_atoms):
-            continue
-        existing_bonds.add((start, end))
 
         mol.AddBond(start, end, BOND_DECODER[bond_type])
         flag, valence = valency(mol)
@@ -83,7 +98,7 @@ def sparseg2mol(atom_tensor, bond_tensor, data_info):
                 mol.GetAtomWithIdx(i).SetFormalCharge(1)
     return mol
 
-def sparsegs2mols(atom_tensor, bond_tensor, data_info):
+def sparsegs2mols(atom_tensor: torch.tensor, bond_tensor: torch.tensor, data_info):
     mols = []
     for v, e in zip(atom_tensor, bond_tensor):
         v, e = unpad(v), unpad(e)

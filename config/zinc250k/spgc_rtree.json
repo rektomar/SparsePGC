@@ -6,20 +6,20 @@
         "nc": 256,
         "backend": "rtree",
         "bvt_hpars": {
-            "nl": 5,
-            "nr": 20,
+            "nl": 4,
+            "nr": 10,
             "ns": 32,
             "ni": 32
         },
         "be_hpars": {
-            "nl": 6,
-            "nr": 20,
+            "nl": 5,
+            "nr": 10,
             "ns": 32,
             "ni": 32
         },
         "bet_hpars": {
-            "nl": 5,
-            "nr": 20,
+            "nl": 4,
+            "nr": 10,
             "ns": 32,
             "ni": 32
         },
@@ -33,6 +33,7 @@
             0.82
         ]
     },
+    "fix": "remove",
     "num_epochs": 10,
     "batch_size": 256,
     "seed": 0
