@@ -125,6 +125,7 @@ def conditional_fix(model, v, e, n, m, max_attempts=5):
         vv, ev = validate_sparsegs(vv, ev)
     return vv, ev
 
+@torch.no_grad
 def sample_with_fix(model, num_samples, fix_type='remove'):
     v, e = model.sample(num_samples)
     if fix_type == 'remove':
@@ -143,7 +144,7 @@ def resample_invalid_mols(model, num_samples, data_info, canonical=True, fix_typ
     mols = []
 
     for _ in range(max_attempts):
-        v, e = sample_with_fix(model, num_samples, fix_type=fix_type)
+        v, e = sample_with_fix(model, n, fix_type=fix_type)
         vmols, _ = get_vmols(mols2smls(sparsegs2mols(v, e, data_info), canonical))
         mols.extend(vmols)
         n = num_samples - len(mols)
@@ -152,7 +153,7 @@ def resample_invalid_mols(model, num_samples, data_info, canonical=True, fix_typ
 
     v_valid, e_valid = mols2sparsegs(mols, data_info)
     if n > 0:
-        v_maybe, e_maybe = model.sample(n)
+        v_maybe, e_maybe = sample_with_fix(model, n, fix_type=fix_type)
         return torch.cat((v_valid, v_maybe)), torch.cat((e_valid, e_maybe))
     else:
         return v_valid, e_valid

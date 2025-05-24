@@ -70,11 +70,9 @@ def validate_sparseg(atom_tensor: torch.tensor, bond_tensor: torch.tensor):
 
     return atom_tensor, bond_tensor
 
-# NOTE: could be done in a more memory efficient way, could be done in place
 def validate_sparsegs(atom_tensor: torch.tensor, bond_tensor: torch.tensor):
-    validated_gs = [validate_sparseg(v, e) for v, e in zip(atom_tensor, bond_tensor)]
-    atom_tensor_v, bond_tensor_v = zip(*validated_gs)
-    return torch.stack(atom_tensor_v, 0), torch.stack(bond_tensor_v, 0)
+    [validate_sparseg(v, e) for v, e in zip(atom_tensor, bond_tensor)]
+    return atom_tensor, bond_tensor
     
 def sparseg2mol(atom_tensor: torch.tensor, bond_tensor: torch.tensor, data_info):
     mol = Chem.RWMol()

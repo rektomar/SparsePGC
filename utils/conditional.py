@@ -4,11 +4,12 @@ from rdkit import Chem, rdBase
 rdBase.DisableLog("rdApp.error")
 
 from utils.molecular import mol2sparseg, sparseg2mol, sparsegs2mols, isvalid, pad
-
+from utils.evaluate import validate_sparsegs
 
 def sample_conditional(model, v, e, data_info):
 
     vc, ec = model.sample_conditional(v, e)
+    vc, ec = validate_sparsegs(vc, ec)
     mol_sample = sparsegs2mols(vc, ec, data_info)
     sml_sample = [Chem.MolToSmiles(mol, kekuleSmiles=True) for mol in mol_sample]
 
