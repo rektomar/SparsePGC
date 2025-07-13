@@ -1,4 +1,4 @@
-# Molecular Sum-Product Networks (MolSPNs)
+# Sparse Probabilistic Graph Circuits (SparsePGCs)
 
 
 
@@ -6,19 +6,19 @@
 
 Clone this repository.
 ```
-git clone https://github.com/mlnpapez/MolSPN MolSPN
+git clone git@github.com:rektomar/SparsePGCs.git
 ```
 
-Go to the MolSPN directory.
+Go to the SparsePGCs directory.
 ```
-cd MolSPN
+cd SparsePGCs
 ```
 
 Set up the environment.
 ```
-conda create --name molspn python=3.10
+conda create --name spgc python=3.10
 
-source activate molspn
+source activate spgc
 
 pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cu124
 pip install rdkit==2024.3.6
