@@ -1,15 +1,15 @@
 # Sparse Probabilistic Graph Circuits (SparsePGCs)
-
-
+This repository contains the code for the paper: *Papež M, Rektoris M, Šmídl V, Pevný T. [Sparse Probabilistic Graph Circuits](http://arxiv.org/abs/2503.12162).*
+SparsePGCs extend [Probabilistic Graph Circuits (PGCs)](https://github.com/mlnpapez/PGC).
 
 ## 1. Install
 
 Clone this repository.
 ```
-git clone git@github.com:rektomar/SparsePGCs.git
+git clone git@github.com:rektomar/SparsePGC.git
 ```
 
-Go to the SparsePGCs directory.
+Go to the SparsePGC directory.
 ```
 cd SparsePGCs
 ```
